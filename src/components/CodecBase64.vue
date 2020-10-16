@@ -1,10 +1,34 @@
 <template>
   <div class="hello">
     <h1>Base64</h1>
-    <span>mode {{mode}}</span>
-    <textarea class="plain-text" v-model="plain" v-on:focus="onFocusChange(true)" v-on:input="onPlainChange"/>
-    <textarea class="base64-text" v-model="base64" v-on:focus="onFocusChange(false)" v-on:input="onBase64Change"/>
-    <span v-if="isBase64CodeInvalid">invalid base64 string</span>
+    <el-row>
+      <el-col :span="11">
+        <el-input
+          class="plain-text"
+          type="textarea"
+          :rows="5"
+          placeholder="请输入普通文本"
+          v-model="plain"
+          v-on:focus="onFocusChange(true)"
+          v-on:input="onPlainChange">
+        </el-input>
+      </el-col>
+      <el-col :span="2">
+        <i style="font-size: 25px" :class="isEncodeMode?'el-icon-right':'el-icon-back'"></i>
+      </el-col>
+      <el-col :span="11">
+        <el-input
+          class="base64-text"
+          type="textarea"
+          :rows="5"
+          placeholder="请输入Base64编码后的字符串"
+          v-model="base64"
+          v-on:focus="onFocusChange(false)"
+          v-on:input="onBase64Change">
+        </el-input>
+        <span v-if="isBase64CodeInvalid">invalid base64 string</span>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -29,8 +53,6 @@ export default {
     console.log('created')
   },
   mounted () {
-    this.plain = '123'
-    this.$set(this, '123')
     console.log('mounted')
   },
   updated () {

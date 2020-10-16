@@ -1,6 +1,5 @@
 <template>
   <div class="hello">
-    <h3>Tools</h3>
     <ul>
       <li><a href="." rel="noopener">Base64</a></li>
     </ul>

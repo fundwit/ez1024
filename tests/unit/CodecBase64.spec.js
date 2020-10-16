@@ -2,12 +2,16 @@ import { expect } from 'chai'
 import { mount } from '@vue/test-utils'
 import CodecBase64 from '../../src/components/CodecBase64'
 
+import Vue from 'vue'
+import ElementUI from 'element-ui'
+Vue.use(ElementUI)
+
 describe('CodeBase64.vue', () => {
   it('输入普通文本时应该显示正确的base64编码', async () => {
     const wrapper = mount(CodecBase64)
     expect(wrapper.vm.$data.isEncodeMode).to.equal(true)
 
-    const plainText = wrapper.get('.plain-text')
+    const plainText = wrapper.get('.plain-text > textarea')
 
     await plainText.trigger('focus')
     await plainText.setValue('abcd') // 设置值+trigger
@@ -29,7 +33,7 @@ describe('CodeBase64.vue', () => {
     const wrapper = mount(CodecBase64)
     expect(wrapper.vm.$data.isEncodeMode).to.equal(true)
 
-    const base64Test = wrapper.get('.base64-text')
+    const base64Test = wrapper.get('.base64-text > textarea')
     await base64Test.trigger('focus')
     expect(wrapper.vm.$data.isEncodeMode).to.equal(false)
 
@@ -47,7 +51,7 @@ describe('CodeBase64.vue', () => {
   it('输入错误的base64时应该显示错误提示', async () => {
     const wrapper = mount(CodecBase64)
 
-    const base64Test = wrapper.get('.base64-text')
+    const base64Test = wrapper.get('.base64-text > textarea')
     await base64Test.trigger('focus')
     expect(wrapper.vm.$data.isBase64CodeInvalid).to.equal(false)
 
