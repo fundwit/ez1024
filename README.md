@@ -1,11 +1,22 @@
 # tools-online
 
+TODO
+
 - [x] base64
 - [ ] urlencode
 - [ ] regex
 - [ ] cron
 - [ ] json
 - [ ] yaml
+- [ ] md5
+- [ ] sha1
+- [ ] md4
+- [ ] sha245
+- [ ] sha512
+- [ ] sha384
+- [ ] hash算法的组合
+- aes, des
+
 
 ## Project setup
 ```
