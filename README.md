@@ -1,5 +1,12 @@
 # tools-online
 
+- [x] base64
+- [ ] urlencode
+- [ ] regex
+- [ ] cron
+- [ ] json
+- [ ] yaml
+
 ## Project setup
 ```
 npm install
