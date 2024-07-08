@@ -1,12 +1,29 @@
 <template>
   <div id="app">
-    <div id="nav">
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
-    </div>
-    <router-view/>
+    <el-container>
+      <top-menu>
+        <el-header>Header</el-header>
+      </top-menu>
+      <el-main>
+        <router-view/>
+      </el-main>
+      <el-footer>
+        Footer
+      </el-footer>
+    </el-container>
   </div>
 </template>
+
+<script>
+import TopMenu from '@/components/common/TopMenu'
+
+export default {
+  name: 'Home',
+  components: {
+    TopMenu
+  }
+}
+</script>
 
 <style>
 #app {

@@ -1,0 +1,92 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: [ master, develop ]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup Node.js environment
+      uses: actions/setup-node@v2.1.1
+      with:
+        node-version: 12.x
+
+    - uses: actions/checkout@v2
+
+    - name: Get dependencies
+      run: |
+        npm ci
+
+    - name: Test
+      run: |
+        npm run lint
+        npm run test:unit
+#        npm run test:e2e
+
+#        go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+#        bash <(curl -s https://codecov.io/bash)
+
+    - name: Build
+      run: |
+
+        npm run build --if-present
+        mv dist .docker/
+
+    - name: Generte Build Info File
+      run:  |
+        timestamp=$(TZ='Asia/Shanghai' date -d today +"%Y-%m-%dT%H:%M:%S+08:00")
+        echo "::set-env name=BUILD_TIMESTAMP::${timestamp}"
+
+        cat >> .docker/dist/buildInfo.json <<EOF
+        {
+          "serviceInstance": "tools-online-unspecified",
+          "serviceName": "tools-online",
+          "description": "web ui of hallo service",
+          "buildInfo": {
+            "buildTime": "${timestamp}",
+            "version": "${GITHUB_SHA}",
+            "sourceCodes": [{
+              "repository": "${GITHUB_REPOSITORY}",
+              "ref": "${GITHUB_REF}",
+              "reversion": {
+                "id": "${GITHUB_SHA}",
+                "author": "",
+                "message": "",
+                "timestamp": "0000-01-01T00:00:00Z"
+              }
+            }]
+          }
+        }
+        EOF
+        cat .docker/dist/buildInfo.json
+
+    - name: Build and push Docker images
+      run: |
+        echo '' >> .docker/Dockerfile
+        echo "LABEL build.version="${GITHUB_SHA}" build.timestamp="${BUILD_TIMESTAMP}" build.source.repository="${GITHUB_REPOSITORY}" build.source.ref="${GITHUB_REF}" build.source.reversion="${GITHUB_SHA}"" >> .docker/Dockerfile
+        cat .docker/Dockerfile
+
+        registry=registry.cn-beijing.aliyuncs.com
+        imageName="${registry}/fundwit/tools-online:${GITHUB_SHA}"
+        echo "image name: $imageName"
+        echo "::set-env name=IMAGE_NAME::${imageName}"
+
+        docker build -t $imageName .docker
+
+        docker login -u ${{secrets.ALIYUN_REGISTRY_USERNAME}} -p ${{secrets.ALIYUN_REGISTRY_TOKEN}} $registry
+        docker push $imageName
+
+    - name: Kubernetes toolset installer
+      uses: yokawasa/action-setup-kube-tools@v0.1.0
+
+    - name: deploy
+      run: |
+        mkdir -p ~/.kube
+        cat >> ~/.kube/config <<EOF
+        ${{secrets.FUNDWIT_DEPLOY_KUBECONFIG}}
+        EOF
+        kubectl set image deployment/tools-online tools-online=${IMAGE_NAME} --record

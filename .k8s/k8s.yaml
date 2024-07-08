@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tools-online
+  namespace: default
+  labels:
+    app: tools-online
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tools-online
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: tools-online
+    spec:
+      containers:
+        - name: tools-online
+          image: registry.cn-beijing.aliyuncs.com/fundwit/tools-online:sha-498d460
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: cr-aliyun
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: tools-online
+  name: tools-online
+  namespace: default
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    app: tools-online
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: tools-online
+  namespace: default
+spec:
+  rules:
+    - host: tools.fundwit.com
+      http:
+        paths:
+          - backend:
+              serviceName: tools-online
+              servicePort: 80
+            path: /
+    - host: ez1024.com
+      http:
+        paths:
+          - backend:
+              serviceName: tools-online
+              servicePort: 80
+            path: /
+  tls:
+    - hosts:
+        - tools.fundwit.com
+      secretName: tls-fundwit.com
+    - hosts:
+        - ez1024.com
+      secretName: tls-ez1024.com

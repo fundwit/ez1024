@@ -50,3 +50,6 @@ npm run lint
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
+
+
+vue-cli-server 默认配置文件位置： node_modules/@vue/cli-service/webpack.config.js
