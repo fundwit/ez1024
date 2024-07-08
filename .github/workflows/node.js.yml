@@ -81,7 +81,7 @@ jobs:
         docker push $imageName
 
     - name: Kubernetes toolset installer
-      uses: yokawasa/action-setup-kube-tools@v0.1.0
+      uses: yokawasa/action-setup-kube-tools@v0.11.1
 
     - name: deploy
       run: |
