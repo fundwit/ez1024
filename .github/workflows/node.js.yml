@@ -39,7 +39,7 @@ jobs:
     - name: Generte Build Info File
       run:  |
         timestamp=$(TZ='Asia/Shanghai' date -d today +"%Y-%m-%dT%H:%M:%S+08:00")
-        echo "::set-env name=BUILD_TIMESTAMP::${timestamp}"
+        echo "BUILD_TIMESTAMP=${timestamp}" >> $GITHUB_ENV
 
         cat >> .docker/dist/buildInfo.json <<EOF
         {
@@ -73,7 +73,7 @@ jobs:
         registry=registry.cn-beijing.aliyuncs.com
         imageName="${registry}/fundwit/tools-online:${GITHUB_SHA}"
         echo "image name: $imageName"
-        echo "::set-env name=IMAGE_NAME::${imageName}"
+        echo "IMAGE_NAME=${imageName}" >> $GITHUB_ENV
 
         docker build -t $imageName .docker
 
