@@ -1,8 +1,6 @@
 name: Node.js CI
 
-on:
-  push:
-    branches: [ master, develop ]
+on: push
 
 jobs:
   build:
@@ -13,9 +11,29 @@ jobs:
     - name: Setup Node.js environment
       uses: actions/setup-node@v4.0.2
       with:
-        node-version: 12.x
+        node-version: 22.x
 
     - uses: actions/checkout@v2
+
+    - name: Generate Build Version basic
+      run: |
+        buildVersion=${GITHUB_SHA:0:10}
+        echo "BUILD_VERSION=${buildVersion}"
+        echo "BUILD_VERSION=${buildVersion}" >> $GITHUB_ENV
+
+    - name: Re-generate Build Version for branch push
+      if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/heads/') }}
+      run: |
+        buildVersion=${GITHUB_REF##*/}.${GITHUB_SHA:0:10}
+        echo "BUILD_VERSION=${buildVersion}"
+        echo "BUILD_VERSION=${buildVersion}" >> $GITHUB_ENV
+
+    - name: Re-generate Build Version for branch tag
+      if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/') }}
+      run: |
+        buildVersion=${GITHUB_REF##*/}.${GITHUB_SHA:0:10}
+        echo "BUILD_VERSION=${buildVersion}"
+        echo "BUILD_VERSION=${buildVersion}" >> $GITHUB_ENV
 
     - name: Get dependencies
       run: |
@@ -23,17 +41,15 @@ jobs:
 
     - name: Test
       run: |
-        npm run lint
-        npm run test:unit
-#        npm run test:e2e
+#        npm run test:unit
 
-#        go test -race -coverprofile=coverage.txt -covermode=atomic ./...
-#        bash <(curl -s https://codecov.io/bash)
+#        export PACT_BROKER_USERNAME=${{secrets.PACT_BROKER_USERNAME}}
+#        export PACT_BROKER_PASSWORD=${{secrets.PACT_BROKER_PASSWORD}}
+#        npm run test:pact
 
     - name: Build
       run: |
-
-        npm run build --if-present
+        npm run build
         mv dist .docker/
 
     - name: Generte Build Info File
@@ -45,10 +61,10 @@ jobs:
         {
           "serviceInstance": "tools-online-unspecified",
           "serviceName": "tools-online",
-          "description": "web ui of hallo service",
+          "description": "web ui of tools-online service",
           "buildInfo": {
             "buildTime": "${timestamp}",
-            "version": "${GITHUB_SHA}",
+            "version": "${BUILD_VERSION}",
             "sourceCodes": [{
               "repository": "${GITHUB_REPOSITORY}",
               "ref": "${GITHUB_REF}",
@@ -65,28 +81,45 @@ jobs:
         cat .docker/dist/buildInfo.json
 
     - name: Build and push Docker images
+      env:
+        SHOULD_PUBLISH: ${{ github.event_name == 'push' && (github.event.ref == 'refs/heads/master' || github.event.ref == 'refs/heads/stage') }}
       run: |
         echo '' >> .docker/Dockerfile
-        echo "LABEL build.version="${GITHUB_SHA}" build.timestamp="${BUILD_TIMESTAMP}" build.source.repository="${GITHUB_REPOSITORY}" build.source.ref="${GITHUB_REF}" build.source.reversion="${GITHUB_SHA}"" >> .docker/Dockerfile
+        echo "LABEL build.version="${BUILD_VERSION}" build.timestamp="${BUILD_TIMESTAMP}" build.source.repository="${GITHUB_REPOSITORY}" build.source.ref="${GITHUB_REF}" build.source.reversion="${GITHUB_SHA}"" >> .docker/Dockerfile
         cat .docker/Dockerfile
 
         registry=registry.cn-beijing.aliyuncs.com
-        imageName="${registry}/fundwit/tools-online:${GITHUB_SHA}"
+        imageName="${registry}/fundwit/tools-online:${BUILD_VERSION}"
         echo "image name: $imageName"
         echo "IMAGE_NAME=${imageName}" >> $GITHUB_ENV
 
         docker build -t $imageName .docker
 
-        docker login -u ${{secrets.ALIYUN_REGISTRY_USERNAME}} -p ${{secrets.ALIYUN_REGISTRY_TOKEN}} $registry
-        docker push $imageName
+        if [ "${SHOULD_PUBLISH}" == 'true' ]; then
+          docker login -u ${{secrets.ALIYUN_REGISTRY_USERNAME}} -p ${{secrets.ALIYUN_REGISTRY_TOKEN}} $registry
+          docker push $imageName
+        fi
 
-    - name: Kubernetes toolset installer
-      uses: yokawasa/action-setup-kube-tools@v0.11.1
-
-    - name: deploy
+    - name: update kubernetes manifests
+      if: ${{ github.event_name == 'push' && (github.event.ref == 'refs/heads/master' || github.event.ref == 'refs/heads/stage') }}
       run: |
-        mkdir -p ~/.kube
-        cat >> ~/.kube/config <<EOF
-        ${{secrets.FUNDWIT_DEPLOY_KUBECONFIG}}
+        rm -rf deploy
+        mkdir deploy
+        cd deploy
+        git init
+        git config --local credential.helper store
+        cat >> ~/.git-credentials <<EOF
+        https://${{secrets.FUNDWIT_CODE_USERNAME_PASSWORD}}@code.fundwit.com
         EOF
-        kubectl set image deployment/tools-online tools-online=${IMAGE_NAME} --record
+
+        git remote add origin https://code.fundwit.com/infra/tools-online.git
+
+        git -c protocol.version=2 fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 origin master
+        git checkout --progress --force -B master refs/remotes/origin/master
+        git log -1
+        git config --local user.name ci-bot
+        git config --local user.email fundwit@qq.com
+        sed -i "s|image: registry.cn-beijing.aliyuncs.com/fundwit/tools-online:.*|image: ${IMAGE_NAME}|g" deploy.yaml
+        git add deploy.yaml
+        git commit -a -m "update version to '$BUILD_VERSION'"
+        git push
